@@ -1,0 +1,298 @@
+#+startup: overview
+#+startup: hidestars
+#+startup: indent
+
+* My arch install. Step-by-step notes
+Installing or reinstalling arch boxes steps-by-stem
+This is a living document where I try to document how I build my systems. It is meant for my private use, but if anyone can benefit from it or want to do some improvements that is of course very welcome. Some parts are sketchy and more notes to remember whereas other parts can be followed almost like a tutorial
+** Starting
+1) Create install media. Download from arch site.
+2) Boot from install media
+3) Press e on the boot menu and add `cow_space=2G` to the end and boot
+
+Run the following on the commandline to mount with more space
+#+begin_src shell
+  mount -o remount,size=4G /run/archiso/cowspace
+#+end_src
+
+** We are using alis an Arch instlal script to automatically bootstrap a box  
+[[https://github.com/picodotdev/alis]]
+- Check merge your alis with the latest version. 
+- Customise the script to the box you are attemting to install. At the least:
+  - Check the mount point for the drive
+  - Check the graphics driver
+  - Check the locale settings
+  - Read it through and change anything that needs to be customized
+  - Stage, commit and push the changes to github.
+- Next, download the install script:
+#+begin_src shell
+  curl -sL http://bit.ly/srk-alis | bash
+#+end_src
+- After you have downlodaded the scripts `alis.conf` file and change the default passwords for LUK, root and user. 
+
+
+** Post-install 
+*** First setup i3 and trizen for AUR packages
+#+begin_src shell
+  echo "test"
+#+end_src
+
+
+#+begin_src shell 
+  aurman -S trizen
+  trizen -S i3-gap
+  trizen -S i3status
+  trizen -S dmenu
+  trizen -S thunar
+  trizen -S thunar-volman
+  trizen -S rofi
+#+end_src
+
+*** Fonts and themes
+#+begin_src shell
+  trizen -Rs ttf-roboto-mono
+  trizen -S nerd-fonts-roboto-mono
+  trizen -S adobe-base-14-fonts
+  trizen -S ephifonts
+  trizen -S --skipinteg 
+  fc-cache
+
+
+  trizen -S lxappearance
+  trizen -S mcos-mjv-nordic-theme
+  trizen -S nordic-theme-git
+  trizen -S materia-theme-git
+  trizen -S x-arc-darker
+  trizen -S ant-dracula-theme-git
+  trizen -S nordic-theme-git
+
+  trizen -S lightdm-slick-greeter
+  ls -l /usr/share/xgreeters/
+  sudo emacs -nw /etc/lightdm/lightdm.conf
+
+  trizen -S xsettings-client xsettingsd
+  emacs -nw .xsettingsd 
+  emacs -nw
+  xsettingsd &
+
+#+end_src
+
+*** Network
+
+After installing see to it that the `nm-applet` is launched when you start in `.xprofile` or `.xinitrc`
+#+begin_src shell
+  trizen -S networkmanager nm-connection-editor network-manager-applet ustbutils modemmanager mobile-broadband-provider-info usb_modeswitch networkmanager-openconnect usbutils wireless_tools net-tools wpa_supplicant trizen dnsmasq  networkmanager-openvpn networkmanager-pptp networkmanager-vpnc
+
+  trizen -S gnome-keyring
+
+  sudo systemctl enable NetworkManager.service
+  sudo systemctl enable NetworkManager.service
+  sudo systemctl enable wpa_supplicant.service
+  sudo systemctl start NetworkManager.service
+  sudo systemctl start wpa_supplicant.service
+
+  nm-applet &
+
+  # reboot
+#+end_src
+
+*** Firewall
+#+begin_src shell 
+  trizen -S ufw
+  systemctl start ufw
+  systemctl enable ufw
+#+end_src
+
+*** Audio
+#+begin_src shell
+  trizen -S pulseaudio
+  trizen -S pavucontrol
+  trizen -S pulseaudio-alsa
+  trizen -S alsa-utils
+#+end_src
+*** Keyboard
+#+begin_src shell 
+  trizcen -S xorg-xmodmap 
+#+end_src
+
+*** Rstats
+#+begin_src shell 
+  trizen -S r gcc-fortran
+  trizen -S emacs-ess-git
+#+end_src
+
+*** Spotify
+#+begin_src shell 
+  trizen -S --skipinteg spotify
+#+end_src
+
+*** Zoom
+#+begin_src shell 
+  trizen -S zoom
+#+end_src
+
+*** DaVinci resolve [under construction, not working currently]
+Add multilib to your pacman.conf
+**** Enabling multilib
+[[https://wiki.archlinux.org/index.php/Official_repositories#Enabling_multilib]]
+To enable multilib repository, uncomment the [multilib] section in /etc/pacman.conf:
+
+`/etc/pacman.conf`
+#+begin_src 
+  [multilib]
+  Include = /etc/pacman.d/mirrorlist
+#+end_src
+**** Install
+#+begin_src shell
+  trizen -S nvidia
+  trizen -S opencl-nvidia
+  trizen -S davinci-resolve
+  trizen -S --skipinteg davinci-resolve
+#+end_src
+
+*** Misc
+**** gotop
+#+begin_src shell 
+  trizen -S gotop
+#+end_src
+**** feh
+#+begin_src shell 
+  trizen -S feh
+#+end_src
+**** digital ocean command linte tool
+#+begin_src shell 
+  trizen -S doctl
+#+end_src
+**** quteborwser
+#+begin_src shell 
+  trizen -S qutebrowser-git
+#+end_src
+**** xrandr and arandr
+#+begin_src shell 
+  trizen -S xorg-xrandr
+  trizen -S arandr
+#+end_src
+
+**** expect
+#+begin_src shell 
+ trizen -S expect
+#+end_src
+
+xorg-xrandr
+*** Getting rid of pc speaker beep [on some machines]
+add following to .xinitrc:
+xset -b ## doesnt work :-(
+# su
+# echo "blacklist pcspkr" > /etc/modprobe.d/nobeep.conf
+
+*** Fix timezone [should not be neccessary]
+sudo timedatectl set-timezone Europe/Helsinki
+
+*** Startup configurations
+add the following to .xprofile (lightdm uses that at startup)
+#+begin_src sh 
+  #!/bin/sh
+
+  xrandr --auto
+  #xrandr --dpi  192
+  xsetroot -solid "#88b14b"
+  emacs --daemon -u sakalli &
+  xset s off #Disable screen saver blanking 
+  xset -dpms #Turn off DPMS 
+  xset s noblank
+
+  export HISTCONTROL=ignoredups:erasedups  # no duplicate entries
+  export HISTSIZE=300000
+  export HISTFILESIZE=200000
+  export BROWSER=firefox
+  # export PROMPT_COMMAND="history -a; history -c; history -r; $PROMPT_COMMAND"
+  # check the window size after each command and, if necessary,
+  # update the values of LINES and COLUMNS.
+  # shopt -s checkwinsize
+  # tmux attach || tmux new
+  xmodmap -e "keycode 107 = Super_R"
+  xmodmap -e "keycode 118 = Super_R"
+  xmodmap -e "keycode 66 = Super_L"
+  setxkbmap -model pc105 -layout us,fi -option grp:shifts_toggle
+  setxkbmap -option caps:super
+
+  # grp:switch           Right Alt (while pressed)
+  # grp:lswitch          Left Alt (while pressed)
+  # grp:lwin_switch      Left Win (while pressed)
+  # grp:rwin_switch      Right Win (while pressed)
+  # grp:win_switch       Any Win (while pressed)
+  # grp:menu_switch      Menu (while pressed), Shift+Menu for Menu
+  # grp:caps_switch      Caps Lock (while pressed), Alt+Caps Lock for the original Caps Lock action
+  # grp:rctrl_switch     Right Ctrl (while pressed)
+  # grp:toggle           Right Alt
+  # grp:lalt_toggle      Left Alt
+  # grp:caps_toggle      Caps Lock
+  # grp:shift_caps_toggle Shift+Caps Lock
+  # grp:shift_caps_switch Caps Lock to first layout; Shift+Caps Lock to last layout
+  # grp:win_menu_switch  Left Win to first layout; Right Win/Menu to last layout
+  # grp:lctrl_rctrl_switch Left Ctrl to first layout; Right Ctrl to last layout
+  # grp:alt_caps_toggle  Alt+Caps Lock
+  # grp:shifts_toggle    Both Shift together
+  # grp:alts_toggle      Both Alt together
+  # grp:ctrls_toggle     Both Ctrl together
+  # grp:ctrl_shift_toggle Ctrl+Shift
+  # grp:lctrl_lshift_toggle Left Ctrl+Left Shift
+  # grp:rctrl_rshift_toggle Right Ctrl+Right Shift
+  # grp:ctrl_alt_toggle  Alt+Ctrl
+  # grp:alt_shift_toggle Alt+Shift
+  # grp:lalt_lshift_toggle Left Alt+Left Shift
+  # grp:alt_space_toggle Alt+Space
+  # grp:menu_toggle      Menu
+  # grp:lwin_toggle      Left Win
+  # grp:win_space_toggle Win+Space
+  # grp:rwin_toggle      Right Win
+  # grp:lshift_toggle    Left Shift
+  # grp:rshift_toggle    Right Shift
+  # grp:lctrl_toggle     Left Ctrl
+  # grp:rctrl_toggle     Right Ctrl
+  # grp:sclk_toggle      Scroll Lock
+  # grp:lctrl_lwin_rctrl_menu Left Ctrl+Left Win to first layout; Right Ctrl+Menu to second layout
+  # grp:lctrl_lwin_toggle Left Ctrl+Left Win
+
+  export EDITOR='emacsclient -nw'
+  export PATH=$PATH:/home/sakalli/bin:/opt/resolve/bin
+
+  #pgrep redshift &> /dev/null || redshift &> /dev/null &
+
+#+end_src
+
+*** Github
+Make keys for github
+#+begin_src shell 
+  ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+  eval "$(ssh-agent -s)"
+  ssh-add ~/.ssh/id_rsa
+  setup github
+  install xclip
+  sudo pacman xclip --noconfirm
+  xclip -sel clip < ~/.ssh/id_rsa.pub
+#+end_src
+
+Log into github go to settings and create a new key that you paste there
+
+*** Bins [under construction]
+export PATH=$PATH:/home/sakalli/bin:/opt/resolve/bin
+chmod +x bin/e
+e
+exit
+trizen -S gvfs gvfs-goa gvfs-afc gvfs-mtp 
+
+reboot
+ 
+*** dotfiles [under construction]
+git clone git@github.com:skallinen/dotfiles.git
+cp -r dotfiles/.emacs.d .
+comment out dired+
+comment out ox-confluence
+
+(org-babel-do-load-languages 'org-babel-load-languages
+'(
+(shell . t)
+)
+)
+
